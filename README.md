@@ -22,11 +22,12 @@ A production-grade, enterprise-ready web application built for API lifecycle gov
    - [Step 5: Initialize the Database](#step-5-initialize-the-database)
    - [Step 6: Run the Application](#step-6-run-the-application)
 5. [Demo User Credentials (RBAC)](#demo-user-credentials-rbac)
-6. [Interactive DBMS Laboratory (14 Modules)](#interactive-dbms-laboratory-14-modules)
-7. [Reports & Analytics Dashboard](#reports--analytics-dashboard)
-8. [Automated Verification Test Suite](#automated-verification-test-suite)
-9. [Troubleshooting & FAQs](#troubleshooting--faqs)
-10. [Project Directory Structure](#project-directory-structure)
+6. [Live GUI-to-Database Synchronization (Viva Guide)](#live-gui-to-database-synchronization-viva-guide)
+7. [Interactive DBMS Laboratory (14 Modules)](#interactive-dbms-laboratory-14-modules)
+8. [Reports & Analytics Dashboard](#reports--analytics-dashboard)
+9. [Automated Verification Test Suite](#automated-verification-test-suite)
+10. [Troubleshooting & FAQs](#troubleshooting--faqs)
+11. [Project Directory Structure](#project-directory-structure)
 
 ---
 
@@ -258,6 +259,158 @@ The system includes pre-seeded user accounts for each organizational role. All a
 | **Priya Patel** | `DEVELOPER` | `priya@company.com` | Manage Core Payment and Analytics APIs, version lifecycles, and developer governance |
 | **Kiran Rao** | `CONSUMER` | `kiran@company.com` | Browse API Catalog, subscribe to APIs, view and manage provisioned API Keys (read-only) |
 | **Sneha Joshi** | `CONSUMER` | `sneha@company.com` | Self-service API discovery and subscription management (read-only) |
+
+---
+
+## Live GUI-to-Database Synchronization (Viva Guide)
+
+Every action in the Web GUI executes real SQL statements (`INSERT`, `UPDATE`, `DELETE`, Triggers, Procedures) directly inside your MySQL database. There is zero simulation or in-memory caching.
+
+During an evaluation or viva, you can split your screen: keep **MySQL Workbench** open on one side and the **Web GUI** on the other side to demonstrate live changes in real time.
+
+### 1. Change an API Status (Demonstrating Trigger `after_api_deprecated`)
+* **GUI Action:**
+  1. Go to **APIs** in the sidebar.
+  2. Click on **Payment Gateway API** (or `/apis/1`).
+  3. Under **Change Status**, select **`DEPRECATED`** from the dropdown and click **Save**.
+  4. Notice the flash message: *"TRIGGER after_api_deprecated fired inside MariaDB/MySQL and changed: v1.0.0 (ACTIVE -> DEPRECATED)"*.
+* **Verify in MySQL:**
+  ```sql
+  -- The API status is now DEPRECATED:
+  SELECT api_id, api_name, status FROM API WHERE api_id = 1;
+
+  -- The trigger automatically cascaded DEPRECATED status to active versions:
+  SELECT version_id, api_id, version_number, status, deprecated_date 
+  FROM API_VERSION 
+  WHERE api_id = 1;
+  ```
+
+---
+
+### 2. Create a New API (Demonstrating `INSERT` on `API` Table)
+* **GUI Action:**
+  1. Log in as a Developer (**`rahul@company.com`**) or Admin (**`arjun@company.com`**).
+  2. Go to **APIs** -> scroll down to **Create New API**.
+  3. Enter Name: `Logistics Tracking API`, Category: `Supply Chain`, Description: `Real-time container tracking`, and click **Create API**.
+* **Verify in MySQL:**
+  ```sql
+  SELECT api_id, api_name, category, status, owner_id, created_at 
+  FROM API 
+  ORDER BY api_id DESC LIMIT 1;
+  ```
+
+---
+
+### 3. Add an API Version & Endpoint (Demonstrating Foreign Keys & Cascading Delete)
+* **GUI Action:**
+  1. Go to **Versions** -> **Add API Version**. Select an API, enter `v2.0.0`, release date today, and click **Create Version**.
+  2. Go to **Endpoints** -> **Add Endpoint**. Select version `v2.0.0`, method **`POST`**, path `/api/v2/orders`, and click **Create Endpoint**.
+* **Verify in MySQL:**
+  ```sql
+  SELECT * FROM API_VERSION ORDER BY version_id DESC LIMIT 1;
+  SELECT * FROM ENDPOINT ORDER BY endpoint_id DESC LIMIT 1;
+  ```
+* **Demonstrate Cascading Delete:**
+  - Delete the Version on the **Versions** page.
+  - In MySQL: Run `SELECT * FROM ENDPOINT WHERE endpoint_id = ...;` — the child endpoint was automatically deleted by MySQL's `ON DELETE CASCADE` rule!
+
+---
+
+### 4. Create Subscriptions & Test Expiry Triggers
+* **GUI Action:**
+  1. Log in as Consumer (**`kiran@company.com`**).
+  2. Go to **Subscriptions** -> **Add Subscription**.
+  3. Pick an API, pick a consumer, and:
+     - **Normal Test:** Set an expiry date in the future (e.g., `2027-12-31`). It will be created as **`ACTIVE`**.
+     - **Trigger Test:** Set an expiry date in the past (e.g., `2020-01-01`). The database trigger (`check_subscription_expiry_insert`) intercepts the insert and **forces** the status to **`EXPIRED`**!
+* **Verify in MySQL:**
+  ```sql
+  SELECT subscription_id, api_id, consumer_id, status, subscribe_date, expires_at 
+  FROM SUBSCRIPTION 
+  ORDER BY subscription_id DESC LIMIT 2;
+  ```
+
+---
+
+### 5. Run the Batch Expiry Sweep (Active Database Sweep)
+* **GUI Action:**
+  1. Log in as Admin (**`arjun@company.com`**).
+  2. Go to **Subscriptions**.
+  3. Click the red button: **Run Expiry Sweep**.
+  4. MySQL executes:
+     ```sql
+     UPDATE SUBSCRIPTION SET expires_at = expires_at WHERE status = 'ACTIVE' AND expires_at < CURDATE();
+     ```
+     This triggers the `check_subscription_expiry` trigger across all overdue rows.
+* **Verify in MySQL:**
+  ```sql
+  -- Verify all overdue subscriptions are now EXPIRED:
+  SELECT subscription_id, status, expires_at 
+  FROM SUBSCRIPTION 
+  WHERE expires_at < CURDATE();
+  ```
+
+---
+
+### 6. Toggle Subscription Permissions (`UPDATE` on `PERMISSION`)
+* **GUI Action:**
+  1. Go to **Subscriptions** -> click **Manage** on Subscription #1 (or open `/subscriptions/1`).
+  2. Click **Toggle** on any permission (`READ`, `WRITE`, `ADMIN`) to switch between *Allowed* and *Denied*.
+* **Verify in MySQL:**
+  ```sql
+  SELECT permission_id, subscription_id, permission_type, allowed 
+  FROM PERMISSION 
+  WHERE subscription_id = 1;
+  ```
+
+---
+
+### 7. Add a New User (Admin Security & Password Hashing)
+* **GUI Action:**
+  1. Log in as Admin (**`arjun@company.com`**).
+  2. Go to **Users** (`/users`).
+  3. Add a new user (Name: `Vikram Singh`, Email: `vikram@company.com`, Role: `Developer`, Team: `Core Services`, Password: `Password@123`).
+* **Verify in MySQL:**
+  ```sql
+  SELECT user_id, full_name, email, role_id, team_id, password_hash 
+  FROM `USER` 
+  ORDER BY user_id DESC LIMIT 1;
+  ```
+  *(Notice the password is stored as a secure, salted SHA-256 hash, never in plain text).*
+
+---
+
+### 8. Test Illegal Foreign Key Deletion (Referential Integrity Constraint)
+* **GUI Action:**
+  1. Go to **Users** as Admin.
+  2. Attempt to delete `Rahul Sharma` (User ID `2`).
+  3. Rahul is an API Owner (`API.owner_id -> USER.user_id` with `ON DELETE RESTRICT`).
+  4. The GUI displays the native error caught from MySQL: **`Cannot delete or update a parent row: a foreign key constraint fails (Error 1451)`**.
+* **Verify in MySQL:**
+  ```sql
+  -- The user row remains protected because foreign key constraints prevented orphan APIs:
+  SELECT user_id, full_name FROM `USER` WHERE user_id = 2;
+  ```
+
+---
+
+### Quick Reference: GUI Actions vs. MySQL Tables Modified
+
+| GUI Page | User Action in Browser | MySQL Table Modified | SQL Operation Executed |
+| :--- | :--- | :--- | :--- |
+| **APIs** | Add API | `API` | `INSERT INTO API (api_name, description, category, status, owner_id) ...` |
+| **APIs** | Edit Name / Category | `API` | `UPDATE API SET api_name=..., category=... WHERE api_id=...` |
+| **APIs** | Change Status to `DEPRECATED` | `API` & `API_VERSION` | `UPDATE API ...` (Fires Trigger `after_api_deprecated`) |
+| **APIs** | Delete API | `API`, `API_VERSION`, `ENDPOINT` | `DELETE FROM API` (Cascades to child versions and endpoints) |
+| **Versions** | Add API Version | `API_VERSION` | `INSERT INTO API_VERSION (api_id, version_number, ...) ...` |
+| **Versions** | Delete Version | `API_VERSION`, `ENDPOINT` | `DELETE FROM API_VERSION` (Cascades to child endpoints) |
+| **Endpoints** | Add Endpoint | `ENDPOINT` | `INSERT INTO ENDPOINT (version_id, method, endpoint_path, ...) ...` |
+| **Endpoints** | Delete Endpoint | `ENDPOINT` | `DELETE FROM ENDPOINT WHERE endpoint_id=...` |
+| **Subscriptions** | Add Subscription | `SUBSCRIPTION` & `PERMISSION` | `INSERT INTO SUBSCRIPTION ...` (Fires Trigger `check_subscription_expiry_insert`) |
+| **Subscriptions** | Run Expiry Sweep | `SUBSCRIPTION` | `UPDATE SUBSCRIPTION SET expires_at=expires_at ...` (Fires Trigger `check_subscription_expiry`) |
+| **Subscriptions** | Toggle Permission | `PERMISSION` | `UPDATE PERMISSION SET allowed = NOT allowed WHERE permission_id=...` |
+| **Users** | Add User (Admin) | `USER` | `INSERT INTO USER (full_name, email, password_hash, ...) ...` |
+| **Users** | Delete User | `USER` | `DELETE FROM USER WHERE user_id=...` (Protected by FK RESTRICT) |
 
 ---
 
