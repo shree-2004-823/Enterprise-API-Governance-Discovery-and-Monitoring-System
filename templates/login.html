@@ -1,0 +1,7 @@
+{% extends "base.html" %}{% block title %}Login{% endblock %}
+{% block anon %}<div class="login card"><h2>API Governance</h2><p class="sub">Enterprise API Governance, Discovery and Monitoring System</p>
+{% for cat, msg in get_flashed_messages(with_categories=true) %}<div class="flash {{ cat }}">{{ msg }}</div>{% endfor %}
+<form method="post"><input type="hidden" name="csrf" value="{{ csrf }}">
+<div style="margin-bottom:10px"><label>Email</label><input name="email" type="email" required style="width:100%"></div>
+<div style="margin-bottom:14px"><label>Password</label><input name="password" type="password" required style="width:100%"></div>
+<button style="width:100%">Log in</button></form></div>{% endblock %}

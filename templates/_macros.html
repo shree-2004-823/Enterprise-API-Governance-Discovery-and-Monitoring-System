@@ -1,0 +1,21 @@
+{% macro table(cols, rows) %}
+{% if not rows %}<p class="hint">(no rows returned)</p>{% else %}
+<div class="tablewrap"><table><thead><tr>{% for c in cols %}<th>{{ c }}</th>{% endfor %}</tr></thead>
+<tbody>{% for r in rows %}<tr>{% for v in r %}<td>{% if v is none %}<span class="muted">NULL</span>{% else %}{{ v }}{% endif %}</td>{% endfor %}</tr>{% endfor %}</tbody></table></div>
+{% endif %}{% endmacro %}
+
+{% macro badge(s) %}<span class="badge {{ s }}">{{ s }}</span>{% endmacro %}
+
+{% macro csrf_field() %}<input type="hidden" name="csrf" value="{{ csrf_token() if csrf_token is defined else (csrf or '') }}">{% endmacro %}
+
+{# Stored-procedure card: picks an id, executes the REAL procedure through /api/concepts/run #}
+{% macro proc_card(key, title, label, options, sig) %}
+<div class="card demo">
+  <h3>{{ title }}</h3>
+  <p class="hint">Executes the MariaDB stored procedure <code>{{ sig }}</code> and shows the result set it returns.</p>
+  <div class="row"><div><label>{{ label }}</label>
+    <select data-param="{{ 'owner_id' if key == 'proc_owner' else 'api_id' }}">{% for o in options %}<option value="{{ o.value }}">{{ o.label }}</option>{% endfor %}</select></div>
+    <button type="button" data-run="{{ key }}">CALL procedure</button></div>
+  <div class="out"></div>
+</div>
+{% endmacro %}

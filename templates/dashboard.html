@@ -1,0 +1,13 @@
+{% extends "base.html" %}{% from "_macros.html" import badge %}{% block title %}Dashboard{% endblock %}
+{% block body %}<h2>Dashboard</h2><p class="sub">Live numbers read from MariaDB.</p>
+<div class="grid">
+<div class="stat"><b>{{ stats.apis }}</b><span>APIs</span></div><div class="stat"><b>{{ stats.versions }}</b><span>API versions</span></div>
+<div class="stat"><b>{{ stats.endpoints }}</b><span>Endpoints</span></div><div class="stat"><b>{{ stats.active_subs }}</b><span>Active subscriptions</span></div>
+<div class="stat"><b>{{ stats.users }}</b><span>Users</span></div></div>
+<div class="two"><div class="card"><h3>APIs by status <span class="tag">GROUP BY</span></h3>
+<div class="tablewrap"><table><tr><th>Status</th><th>APIs</th></tr>{% for r in by_status %}<tr><td>{{ badge(r.status) }}</td><td>{{ r.total }}</td></tr>{% endfor %}</table></div></div>
+<div class="card"><h3>Latest versions <span class="tag">api_version_view</span></h3>
+<div class="tablewrap"><table><tr><th>API</th><th>Version</th><th>Status</th><th>Released</th></tr>{% for r in recent %}<tr><td>{{ r.api_name }}</td><td>{{ r.version_number }}</td><td>{{ badge(r.status) }}</td><td>{{ r.release_date }}</td></tr>{% endfor %}</table></div></div></div>
+<div class="card"><h3>Database objects present in MariaDB</h3>
+<p>{{ objects.triggers_n }} triggers &middot; {{ objects.functions_n }} stored functions &middot; {{ objects.procedures_n }} stored procedures &middot; {{ objects.views_n }} views.
+Open <a href="{{ url_for('concepts_page') }}"><b>DBMS Concepts</b></a> to demonstrate each of them.</p></div>{% endblock %}

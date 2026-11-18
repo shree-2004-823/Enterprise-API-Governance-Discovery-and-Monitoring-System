@@ -1,0 +1,283 @@
+{% extends "base.html" %}
+{% from "_macros.html" import table, badge with context %}
+{% block title %}Reports & Analytics{% endblock %}
+
+{% block body %}
+<div class="report-header">
+  <div>
+    <h2>Enterprise Reports &amp; Analytics</h2>
+    <p class="sub">Executive API Governance, Discovery Metrics &amp; Real-time Database Telemetry from MySQL 8.0</p>
+  </div>
+  <div class="report-actions">
+    <input type="text" id="report-search" placeholder="Search across all reports..." class="search-input">
+  </div>
+</div>
+
+<!-- 1. Executive Summary Statistics -->
+<div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));">
+  <div class="stat">
+    <b>{{ overview.total_apis }}</b>
+    <span>Total APIs</span>
+    <div class="stat-sub"><span class="badge ACTIVE">{{ overview.active_apis }} Active</span> <span class="badge DEPRECATED">{{ overview.deprecated_apis }} Depr</span></div>
+  </div>
+  <div class="stat">
+    <b>{{ overview.total_versions }}</b>
+    <span>API Versions</span>
+    <div class="stat-sub"><span class="badge ACTIVE">{{ overview.active_versions }} Active</span></div>
+  </div>
+  <div class="stat">
+    <b>{{ overview.total_endpoints }}</b>
+    <span>Total Endpoints</span>
+    <div class="stat-sub"><span class="muted">Across all versions</span></div>
+  </div>
+  <div class="stat">
+    <b>{{ overview.total_subs }}</b>
+    <span>Subscriptions</span>
+    <div class="stat-sub"><span class="badge ACTIVE">{{ overview.active_subs }} Active</span> <span class="badge EXPIRED">{{ overview.expired_subs }} Expired</span></div>
+  </div>
+  <div class="stat">
+    <b>{{ overview.total_users }}</b>
+    <span>Total Users</span>
+    <div class="stat-sub"><span class="muted">{{ overview.total_teams }} Teams &middot; {{ overview.total_roles }} Roles</span></div>
+  </div>
+  <div class="stat">
+    <b>{{ overview.total_permissions }}</b>
+    <span>Active Permissions</span>
+    <div class="stat-sub"><span class="muted">RBAC &amp; API Policies</span></div>
+  </div>
+</div>
+
+<!-- 2. Visual Analytics Charts -->
+<div class="two">
+  <!-- Chart 1: APIs by Category -->
+  <div class="card">
+    <h3>APIs by Category <span class="tag">GROUP BY category</span></h3>
+    <p class="hint">Distribution of API assets across enterprise domain categories.</p>
+    <div class="chart-bars">
+      {% for c in categories %}
+      <div class="chart-bar-row">
+        <div class="chart-label"><b>{{ c.category }}</b> <span class="muted">({{ c.total_apis }} APIs &middot; {{ c.percentage }}%)</span></div>
+        <div class="chart-track">
+          <div class="chart-fill pri" style="width: {{ c.percentage }}%;"></div>
+        </div>
+        <div class="chart-meta">
+          <span class="badge ACTIVE sm">{{ c.active_apis }} Active</span>
+          {% if c.deprecated_apis %}<span class="badge DEPRECATED sm">{{ c.deprecated_apis }} Depr</span>{% endif %}
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- Chart 2: Endpoints by HTTP Method -->
+  <div class="card">
+    <h3>Endpoints by Method <span class="tag">GROUP BY method</span></h3>
+    <p class="hint">RESTful endpoint operations registered across all API versions.</p>
+    <div class="chart-bars">
+      {% for m in methods %}
+      <div class="chart-bar-row">
+        <div class="chart-label"><b>{{ m.method }}</b> <span class="muted">({{ m.count }} routes &middot; {{ m.percentage }}%)</span></div>
+        <div class="chart-track">
+          <div class="chart-fill {% if m.method == 'GET' %}ok{% elif m.method == 'POST' %}pri{% elif m.method == 'DELETE' %}err{% else %}warn{% endif %}" style="width: {{ m.percentage }}%;"></div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    <div style="margin-top: 14px; padding-top: 10px; border-top: 1px solid var(--line);">
+      <b>Users by Role:</b>
+      <div style="display: flex; gap: 8px; margin-top: 6px;">
+        {% for r in roles %}
+        <span class="badge sm">{{ r.role_name }}: {{ r.user_count }} ({{ r.percentage }}%)</span>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 3. Subscriptions Expiry & Health Report -->
+<div class="card filter-table-card">
+  <div class="row" style="justify-content: space-between; align-items: center; margin-bottom: 12px;">
+    <div>
+      <h3 style="margin: 0;">Subscription Expiry &amp; Duration Report</h3>
+      <p class="hint" style="margin: 2px 0 0;">Evaluated with stored function <code>subscription_days()</code> and live date diff.</p>
+    </div>
+    <span class="badge sm">{{ expiry_report|length }} Subscriptions Total</span>
+  </div>
+  <div class="tablewrap">
+    <table class="report-table" id="table-expiry">
+      <thead>
+        <tr>
+          <th>Sub ID</th>
+          <th>Consumer</th>
+          <th>API Name</th>
+          <th>Version</th>
+          <th>Status</th>
+          <th>Subscribed</th>
+          <th>Expires</th>
+          <th>Duration (Days)<br><span class="tag">subscription_days()</span></th>
+          <th>Days Left</th>
+          <th>Urgency</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for s in expiry_report %}
+        <tr>
+          <td>#{{ s.subscription_id }}</td>
+          <td><b>{{ s.consumer_name }}</b><br><small class="muted">{{ s.consumer_email }}</small></td>
+          <td>{{ s.api_name }}</td>
+          <td><code>{{ s.version_number }}</code></td>
+          <td>{{ badge(s.status) }}</td>
+          <td>{{ s.subscribe_date }}</td>
+          <td>{{ s.expires_at or 'No Expiry' }}</td>
+          <td><b>{{ s.duration_days if s.duration_days is not none else 'N/A' }}</b></td>
+          <td>
+            {% if s.days_left is not none %}
+              {% if s.days_left < 0 %}
+                <span class="err">Overdue by {{ 0 - s.days_left }}d</span>
+              {% else %}
+                <b>{{ s.days_left }}d</b>
+              {% endif %}
+            {% else %}
+              <span class="muted">-</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if s.urgency == 'expired' %}
+              <span class="badge DEPRECATED">EXPIRED</span>
+            {% elif s.urgency == 'critical' %}
+              <span class="badge MAINTENANCE">CRITICAL (&le;30d)</span>
+            {% elif s.urgency == 'warning' %}
+              <span class="badge sm warnbg">WARNING (&le;90d)</span>
+            {% else %}
+              <span class="badge ACTIVE">HEALTHY</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- 4. API Version Lifecycle Report -->
+<div class="card filter-table-card">
+  <div class="row" style="justify-content: space-between; align-items: center; margin-bottom: 12px;">
+    <div>
+      <h3 style="margin: 0;">API Version Lifecycle &amp; Telemetry Report</h3>
+      <p class="hint" style="margin: 2px 0 0;">Version status, release dates, age calculated via <code>api_age()</code>, and endpoint density.</p>
+    </div>
+    <span class="badge sm">{{ versions|length }} Versions Tracked</span>
+  </div>
+  <div class="tablewrap">
+    <table class="report-table" id="table-versions">
+      <thead>
+        <tr>
+          <th>Ver ID</th>
+          <th>API Name</th>
+          <th>Category</th>
+          <th>Version</th>
+          <th>Status</th>
+          <th>Release Date</th>
+          <th>Age (Yrs)<br><span class="tag">api_age()</span></th>
+          <th>Deprecated Date</th>
+          <th>Endpoints</th>
+          <th>Subscribers</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for v in versions %}
+        <tr>
+          <td>{{ v.version_id }}</td>
+          <td><b>{{ v.api_name }}</b></td>
+          <td>{{ v.category or 'General' }}</td>
+          <td><code>{{ v.version_number }}</code></td>
+          <td>{{ badge(v.status) }}</td>
+          <td>{{ v.release_date }}</td>
+          <td>{{ v.age_years }} yr</td>
+          <td>{{ v.deprecated_date or '-' }}</td>
+          <td><span class="badge sm">{{ v.endpoints_count }} endpoints</span></td>
+          <td><b>{{ v.subscriptions_count }}</b></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- 5. API Ownership & Governance -->
+<div class="card filter-table-card">
+  <div class="row" style="justify-content: space-between; align-items: center; margin-bottom: 12px;">
+    <div>
+      <h3 style="margin: 0;">API Ownership &amp; Developer Governance</h3>
+      <p class="hint" style="margin: 2px 0 0;">Relates user accounts, organizational teams, roles, and API publishing velocity.</p>
+    </div>
+    <span class="badge sm">{{ owners|length }} Accounts</span>
+  </div>
+  <div class="tablewrap">
+    <table class="report-table" id="table-owners">
+      <thead>
+        <tr>
+          <th>User ID</th>
+          <th>Developer / Owner</th>
+          <th>Email</th>
+          <th>System Role</th>
+          <th>Team</th>
+          <th>Total APIs</th>
+          <th>Active APIs</th>
+          <th>Deprecated APIs</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for o in owners %}
+        <tr>
+          <td>{{ o.user_id }}</td>
+          <td><b>{{ o.full_name }}</b></td>
+          <td>{{ o.email }}</td>
+          <td><span class="badge sm">{{ o.role_name }}</span></td>
+          <td>{{ o.team_name }}</td>
+          <td><b>{{ o.owned_apis }}</b></td>
+          <td><span class="badge ACTIVE sm">{{ o.active_apis }}</span></td>
+          <td><span class="badge sm">{{ o.deprecated_apis }}</span></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- 6. Academic DBMS Analytical Queries -->
+<div class="card">
+  <h3>Academic SQL Query Reports (15 Analytical Queries)</h3>
+  <p class="hint">Every report below is executed live against MySQL 8.0 demonstrating Views, Multi-Table JOINs, Subqueries, GROUP BY, and Aggregates.</p>
+  
+  {% for r in sql_reports %}
+  <div class="demo" style="border-top: 1px solid var(--line); padding-top: 14px; margin-top: 14px;">
+    <div style="display: flex; justify-content: space-between; align-items: baseline;">
+      <h4 style="margin: 0 0 4px;">{{ r.title }}</h4>
+      <span class="badge">{{ r.concept }}</span>
+    </div>
+    <p class="hint" style="margin: 0 0 6px;">{{ r.explain }}</p>
+    <details>
+      <summary>Show SQL Query</summary>
+      <pre>{{ r.sql }}</pre>
+    </details>
+    {% if r.error %}
+      <div class="err">{{ r.error }}</div>
+    {% else %}
+      {{ table(r.columns, r.rows) }}
+    {% endif %}
+  </div>
+  {% endfor %}
+</div>
+
+<!-- Client-side Interactive Search & Filter Script -->
+<script>
+document.getElementById('report-search').addEventListener('input', function(e) {
+  const query = e.target.value.toLowerCase().trim();
+  document.querySelectorAll('.report-table tbody tr').forEach(function(row) {
+    const text = row.textContent.toLowerCase();
+    row.style.display = text.includes(query) ? '' : 'none';
+  });
+});
+</script>
+{% endblock %}

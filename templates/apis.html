@@ -1,0 +1,12 @@
+{% extends "base.html" %}{% from "_macros.html" import badge, csrf_field, proc_card with context %}{% block title %}APIs{% endblock %}
+{% block body %}<h2>APIs</h2><p class="sub">Listed from <code>api_details_view</code>; age is calculated by the stored function <code>api_age()</code>.</p>
+<div class="card"><div class="tablewrap"><table><thead><tr><th>ID</th><th>API</th><th>Category</th><th>Owner</th><th>Status</th><th>Age (yrs)<br><span class="tag">api_age()</span></th><th>Meaning<br><span class="tag">api_status_label()</span></th><th>Versions</th><th></th></tr></thead><tbody>
+{% for a in apis %}<tr><td>{{ a.api_id }}</td><td><a href="{{ url_for('api_detail', api_id=a.api_id) }}">{{ a.api_name }}</a></td><td>{{ a.category }}</td><td>{{ a.owner_name }}</td><td>{{ badge(a.status) }}</td><td>{{ a.age_years }}</td><td>{{ a.status_label }}</td><td>{{ a.versions }}</td>
+<td><a class="btn sm" href="{{ url_for('api_detail', api_id=a.api_id) }}">Open</a></td></tr>{% endfor %}</tbody></table></div></div>
+{% if can_write %}<div class="card"><h3>Add API</h3><form method="post" action="{{ url_for('api_add') }}">{{ csrf_field() }}
+<div class="row"><div><label>Name</label><input name="api_name" required></div><div><label>Category</label><input name="category"></div>
+<div><label>Owner</label><select name="owner_id">{% for o in owners %}<option value="{{ o.user_id }}">{{ o.full_name }} ({{ o.role_name }})</option>{% endfor %}</select></div>
+<div><label>Status</label><select name="status">{% for s in statuses %}<option>{{ s }}</option>{% endfor %}</select></div></div>
+<div class="row"><div style="flex:1"><label>Description</label><input name="description" style="width:100%"></div><button>Create API</button></div></form></div>{% endif %}
+{{ proc_card('proc_owner', 'APIs by owner - stored procedure', 'Owner', owner_opts, 'get_apis_by_owner(ownerId)') }}
+{% endblock %}

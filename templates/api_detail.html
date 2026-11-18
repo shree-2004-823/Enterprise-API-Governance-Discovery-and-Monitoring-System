@@ -1,0 +1,23 @@
+{% extends "base.html" %}{% from "_macros.html" import badge, csrf_field, table with context %}{% block title %}{{ api.api_name }}{% endblock %}
+{% block body %}<p><a href="{{ url_for('apis') }}">&larr; All APIs</a></p>
+<h2>{{ api.api_name }} {{ badge(api.status) }}</h2><p class="sub">{{ api.description }}</p>
+<div class="grid"><div class="stat"><b>{{ api.age_years }}</b><span>Age in years &middot; api_age()</span></div>
+<div class="stat"><b style="font-size:17px">{{ api.owner_name }}</b><span>Owner ({{ api.owner_email }})</span></div>
+<div class="stat"><b style="font-size:17px">{{ api.category }}</b><span>Category</span></div>
+<div class="stat"><b style="font-size:15px">{{ api.status_label }}</b><span>api_status_label()</span></div></div>
+{% if can_write %}<div class="card"><h3>Change status - fires trigger <code>after_api_deprecated</code></h3>
+<p class="hint">Set the API to DEPRECATED and watch the Versions table below: MariaDB's trigger (not Python) deprecates its ACTIVE versions. Setting it back to ACTIVE does not reactivate versions - the trigger only handles deprecation.</p>
+<form method="post" action="{{ url_for('api_status', api_id=api.api_id) }}" class="row">{{ csrf_field() }}
+<div><label>New status</label><select name="status">{% for s in statuses %}<option {{ 'selected' if s==api.status }}>{{ s }}</option>{% endfor %}</select></div><button>Update status</button></form></div>{% endif %}
+<div class="card"><h3>Versions <span class="tag">api_version_view</span></h3>
+<div class="tablewrap"><table><tr><th>ID</th><th>Version</th><th>Status</th><th>Released</th><th>Deprecated on</th><th>Changelog</th></tr>
+{% for v in versions %}<tr><td>{{ v.version_id }}</td><td>{{ v.version_number }}</td><td>{{ badge(v.status) }}</td><td>{{ v.release_date }}</td><td>{{ v.deprecated_date or '-' }}</td><td class="wrap">{{ v.changelog }}</td></tr>{% else %}<tr><td colspan="6">No versions</td></tr>{% endfor %}</table></div></div>
+<div class="card"><h3>Endpoints</h3>{% if endpoints %}<div class="tablewrap"><table><tr><th>Version</th><th>Method</th><th>Path</th><th>Description</th></tr>
+{% for e in endpoints %}<tr><td>{{ e.version_number }}</td><td>{{ e.method }}</td><td><code>{{ e.endpoint_path }}</code></td><td class="wrap">{{ e.description }}</td></tr>{% endfor %}</table></div>{% else %}<p class="hint">No endpoints.</p>{% endif %}</div>
+<div class="card"><h3>Subscriptions <span class="tag">CALL get_api_subscriptions({{ api.api_id }})</span></h3>{{ table(subs.columns, subs.rows) }}</div>
+{% if can_write %}<div class="card"><h3>Edit API</h3><form method="post" action="{{ url_for('api_edit', api_id=api.api_id) }}">{{ csrf_field() }}
+<div class="row"><div><label>Name</label><input name="api_name" value="{{ api.api_name }}" required></div><div><label>Category</label><input name="category" value="{{ api.category or '' }}"></div>
+<div><label>Owner</label><select name="owner_id">{% for o in owners %}<option value="{{ o.user_id }}" {{ 'selected' if o.user_id==api.owner_id }}>{{ o.full_name }}</option>{% endfor %}</select></div></div>
+<div class="row"><div style="flex:1"><label>Description</label><input name="description" value="{{ api.description or '' }}" style="width:100%"></div><button>Save</button></div></form>
+<form method="post" action="{{ url_for('api_delete', api_id=api.api_id) }}" onsubmit="return confirm('Delete this API? Versions and endpoints cascade; subscriptions block it (FK RESTRICT).')">{{ csrf_field() }}<button class="danger">Delete API</button>
+<span class="hint">Deleting an API that has subscriptions is refused by the foreign key.</span></form></div>{% endif %}{% endblock %}

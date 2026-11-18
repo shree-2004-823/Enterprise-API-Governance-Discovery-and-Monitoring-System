@@ -1,0 +1,22 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="csrf" content="{{ csrf }}"><title>{% block title %}API Management{% endblock %}</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}"></head><body>
+{% if me %}<div class="layout"><nav class="side">
+<h1>API Governance</h1><small>DBMS Mini Project &middot; MySQL 8.0</small>
+{% set ep = request.endpoint or '' %}
+<a href="{{ url_for('dashboard') }}" class="{{ 'on' if ep=='dashboard' }}">Dashboard</a>
+<div class="sep">Manage</div>
+<a href="{{ url_for('apis') }}" class="{{ 'on' if ep in ('apis','api_detail') }}">APIs</a>
+<a href="{{ url_for('versions') }}" class="{{ 'on' if ep=='versions' }}">Versions</a>
+<a href="{{ url_for('endpoints') }}" class="{{ 'on' if ep=='endpoints' }}">Endpoints</a>
+<a href="{{ url_for('subscriptions') }}" class="{{ 'on' if ep in ('subscriptions','subscription_detail') }}">Subscriptions</a>
+{% if is_admin %}<a href="{{ url_for('users') }}" class="{{ 'on' if ep=='users' }}">Users</a>{% endif %}
+<div class="sep">Database</div>
+<a href="{{ url_for('reports') }}" class="{{ 'on' if ep=='reports' }}">Reports</a>
+<a href="{{ url_for('concepts') }}" class="{{ 'on' if ep in ('concepts','concepts_page') }}">DBMS Concepts</a>
+<div class="who">{{ me.name }}<br><span class="muted">{{ me.role }}{% if not can_write %} (read-only){% endif %}</span><br><a href="{{ url_for('logout') }}">Log out</a></div>
+</nav><main>
+{% for cat, msg in get_flashed_messages(with_categories=true) %}<div class="flash {{ cat }}">{{ msg }}</div>{% endfor %}
+{% block body %}{% endblock %}</main></div>
+{% else %}{% block anon %}{% endblock %}{% endif %}
+<script src="{{ url_for('static', filename='app.js') }}"></script></body></html>

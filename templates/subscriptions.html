@@ -1,0 +1,15 @@
+{% extends "base.html" %}{% from "_macros.html" import badge, csrf_field, proc_card with context %}{% block title %}Subscriptions{% endblock %}
+{% block body %}<h2>Subscriptions</h2><p class="sub">Listed from <code>subscription_details_view</code>. Duration is calculated by <code>subscription_days()</code> inside MariaDB.</p>
+{% if can_write %}<div class="card"><form method="post" action="{{ url_for('subscription_sweep') }}" class="row" style="margin:0">{{ csrf_field() }}
+<div style="flex:1"><b>Expiry sweep</b><br><span class="hint">Runs one UPDATE; MariaDB's trigger <code>check_subscription_expiry</code> marks every ACTIVE subscription with a past expiry date as EXPIRED.</span></div><button>Run expiry sweep</button></form></div>{% endif %}
+<div class="card"><div class="tablewrap"><table><thead><tr><th>ID</th><th>Consumer</th><th>API</th><th>Version</th><th>Status</th><th>Subscribed</th><th>Expires</th><th>Duration (days)<br><span class="tag">subscription_days()</span></th><th>Days left</th><th>Perms</th><th></th></tr></thead><tbody>
+{% for s in rows %}<tr><td>{{ s.subscription_id }}</td><td>{{ s.consumer_name }}</td><td>{{ s.api_name }}</td><td>{{ s.version_number }}</td><td>{{ badge(s.subscription_status) }}</td><td>{{ s.subscribe_date }}</td><td>{{ s.expires_at or '-' }}</td><td>{{ s.duration_days if s.duration_days is not none else '-' }}</td><td>{{ s.days_left if s.days_left is not none else '-' }}</td><td>{{ s.permissions }}</td>
+<td><a class="btn sm" href="{{ url_for('subscription_detail', sid=s.subscription_id) }}">Manage</a></td></tr>{% endfor %}</tbody></table></div></div>
+{% if can_write %}<div class="card"><h3>Add subscription</h3><form method="post" action="{{ url_for('subscription_add') }}">{{ csrf_field() }}
+<div class="row"><div><label>API</label><select name="api_id" id="sub-api">{% for a in apis %}<option value="{{ a.api_id }}">{{ a.api_name }}</option>{% endfor %}</select></div>
+<div><label>Version</label><select name="version_id" id="sub-ver">{% for v in versions %}<option value="{{ v.version_id }}" data-api="{{ v.api_id }}">{{ v.version_number }}</option>{% endfor %}</select></div>
+<div><label>Consumer</label><select name="consumer_id">{% for c in consumers %}<option value="{{ c.user_id }}">{{ c.full_name }} ({{ c.role_name }})</option>{% endfor %}</select></div>
+<div><label>Subscribe date</label><input type="date" name="subscribe_date" required></div><div><label>Expires</label><input type="date" name="expires_at"></div>
+<div><label>Status</label><select name="status">{% for s in statuses %}<option>{{ s }}</option>{% endfor %}</select></div><button>Subscribe</button></div></form>
+<p class="hint">Try a past expiry date with status ACTIVE: the BEFORE INSERT trigger stores it as EXPIRED. The composite foreign key also stops a version from being paired with the wrong API.</p></div>{% endif %}
+{{ proc_card('proc_api', 'Subscriptions by API - stored procedure', 'API', api_opts, 'get_api_subscriptions(apiId)') }}{% endblock %}

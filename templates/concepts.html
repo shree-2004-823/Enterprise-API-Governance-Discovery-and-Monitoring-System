@@ -1,0 +1,142 @@
+{% extends "base.html" %}
+{% block title %}DBMS Concepts Laboratory{% endblock %}
+
+{% block body %}
+<div class="concepts-header">
+  <h2>DBMS Concepts Interactive Laboratory</h2>
+  <p class="sub">Comprehensive University DBMS Demonstration Engine &middot; Real SQL Executed on MySQL 8.0 &middot; Zero Simulations</p>
+  <!-- Academic Syllabus Mapping Index -->
+  <div class="card" style="margin: 10px 0 16px; padding: 12px 16px; background: var(--pri2); border-color: var(--pri);">
+    <b style="color: var(--pri);">University DBMS Core Assessment Modules:</b>
+    <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-top: 6px; font-size: 13px;">
+      <span class="badge sm">1. Tables and Relationships</span>
+      <span class="badge sm">2. DDL Operations</span>
+      <span class="badge sm">3. DML Operations</span>
+      <span class="badge sm">4. JOIN Queries</span>
+      <span class="badge sm">5. Subqueries</span>
+      <span class="badge sm">6. Aggregate Functions</span>
+      <span class="badge sm">7. Database Views</span>
+      <span class="badge sm">8. Triggers</span>
+      <span class="badge sm">9. Stored Functions</span>
+      <span class="badge sm">10. Stored Procedures</span>
+    </div>
+  </div>
+</div>
+
+<!-- 14 Interactive Concept Sticky Navigation -->
+<div class="concept-nav">
+  {% for s in sections %}
+  <a href="#{{ s.id }}">{{ s.title }}</a>
+  {% endfor %}
+</div>
+
+{% for sec in sections %}
+<section class="card concept-card" id="{{ sec.id }}">
+  <div class="concept-card-header">
+    <h3 style="font-size: 21px; margin: 0 0 6px;">{{ sec.title }}</h3>
+    <p style="margin: 0 0 10px; color: var(--ink);">{{ sec.explain }}</p>
+    {% if sec.tables %}
+    <div style="margin: 6px 0 10px; display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+      <span class="hint">Involved Tables:</span>
+      {% for t in sec.tables %}
+      <span class="badge sm">{{ t }}</span>
+      {% endfor %}
+    </div>
+    {% endif %}
+  </div>
+
+  {% if sec.tables and sec.id != 'keys' and sec.id != 'overview' %}
+  <div style="margin: 8px 0 14px;">
+    <b class="hint">Live Base Table Previews (from MySQL 8.0)</b>
+    <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-top: 6px;">
+      {% for t in sec.tables %}
+      {% if t != 'all_tables' and t != 'information_schema' and t != 'api_details_view' and t != 'api_version_view' and t != 'subscription_details_view' %}
+      <details class="lazy" data-table="{{ t }}"><summary>{{ t }}</summary><div class="tp"></div></details>
+      {% endif %}
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
+  <div class="entries-list">
+    {% for it in sec.entries %}
+    <div class="demo" id="demo-{{ it.key }}">
+      <div style="display: flex; justify-content: space-between; align-items: baseline; flex-wrap: wrap; gap: 8px;">
+        <h4 style="margin: 0 0 4px; font-size: 16px;">{{ it.title }}</h4>
+        {% if it.tables %}
+        <div>
+          {% for tb in it.tables %}
+          <span class="badge sm">{{ tb }}</span>
+          {% endfor %}
+        </div>
+        {% endif %}
+      </div>
+      
+      <p class="hint" style="margin: 2px 0 8px;">{{ it.explain }}</p>
+
+      {% if it.sql %}
+      <div class="tag">SQL Statement</div>
+      <pre class="sql-code">{{ it.sql }}</pre>
+      {% endif %}
+
+      <!-- Line-by-Line SQL Explanation (Essential for University Evaluation) -->
+      {% if it.lines %}
+      <details class="line-by-line-details">
+        <summary>Line-by-Line SQL Statement Analysis ({{ it.lines|length }} lines)</summary>
+        <div class="tablewrap" style="margin: 8px 0;">
+          <table class="line-by-line-table">
+            <thead>
+              <tr>
+                <th style="width: 40%;">SQL Syntax / Clause</th>
+                <th>Database Engine Operation &amp; Logic</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for l in it.lines %}
+              <tr>
+                <td><code>{{ l.line }}</code></td>
+                <td>{{ l.text }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </details>
+      {% endif %}
+
+      <!-- Live DDL Definition from MySQL Dictionary -->
+      {% if it.definition %}
+      <details style="margin: 6px 0;">
+        <summary>Actual DDL Definition in MySQL ({{ it.define[0] }} <code>{{ it.define[1] }}</code>)</summary>
+        <pre>{{ it.definition }}</pre>
+      </details>
+      {% endif %}
+
+      <!-- Interactive Controls and Demonstration Button -->
+      {% if it.button %}
+      <div class="row" style="margin-top: 10px; align-items: flex-end;">
+        {% for inp in it.inputs %}
+        <div>
+          <label>{{ inp.label }}</label>
+          {% if inp.kind == 'select' %}
+          <select data-param="{{ inp.name }}">
+            {% for o in sources[inp.source] %}
+            <option value="{{ o.value }}">{{ o.label }}</option>
+            {% endfor %}
+          </select>
+          {% else %}
+          <input type="date" data-param="{{ inp.name }}" value="{{ inp.default }}">
+          {% endif %}
+        </div>
+        {% endfor %}
+        <button type="button" class="btn" data-run="{{ it.key }}">{{ it.button }}</button>
+      </div>
+      <div class="out"></div>
+      {% endif %}
+    </div>
+    {% endfor %}
+  </div>
+</section>
+{% endfor %}
+
+{% endblock %}

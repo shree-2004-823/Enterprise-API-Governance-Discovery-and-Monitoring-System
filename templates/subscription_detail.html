@@ -1,0 +1,17 @@
+{% extends "base.html" %}{% from "_macros.html" import badge, csrf_field with context %}{% block title %}Subscription {{ s.subscription_id }}{% endblock %}
+{% block body %}<p><a href="{{ url_for('subscriptions') }}">&larr; All subscriptions</a></p>
+<h2>Subscription #{{ s.subscription_id }} {{ badge(s.subscription_status) }}</h2>
+<p class="sub">{{ s.consumer_name }} &rarr; {{ s.api_name }} {{ s.version_number }} &middot; {{ s.subscribe_date }} to {{ s.expires_at or 'no expiry' }} &middot; <b>{{ s.duration_days }}</b> days (subscription_days())</p>
+{% if can_write %}<div class="card"><h3>Update status / expiry <span class="tag">trigger check_subscription_expiry</span></h3>
+<form method="post" action="{{ url_for('subscription_update', sid=s.subscription_id) }}" class="row">{{ csrf_field() }}
+<div><label>Status</label><select name="status">{% for st in statuses %}<option {{ 'selected' if st==s.subscription_status }}>{{ st }}</option>{% endfor %}</select></div>
+<div><label>Expires</label><input type="date" name="expires_at" value="{{ s.expires_at or '' }}"></div><button>Save</button></form>
+<p class="hint">Choose ACTIVE with an expiry date in the past: MariaDB's trigger overrides the status to EXPIRED.</p>
+<form method="post" action="{{ url_for('subscription_delete', sid=s.subscription_id) }}" onsubmit="return confirm('Delete subscription?')">{{ csrf_field() }}<button class="danger">Delete subscription</button></form></div>{% endif %}
+<div class="card"><h3>Permissions</h3><div class="tablewrap"><table><tr><th>ID</th><th>Type</th><th>Allowed</th><th>Created</th>{% if can_write %}<th></th>{% endif %}</tr>
+{% for p in perms %}<tr><td>{{ p.permission_id }}</td><td>{{ p.permission_type }}</td><td>{{ 'Yes' if p.allowed else 'No' }}</td><td>{{ p.created_at }}</td>
+{% if can_write %}<td><form class="inline" method="post" action="{{ url_for('permission_toggle', pid=p.permission_id) }}">{{ csrf_field() }}<button class="sm sec">Toggle</button></form>
+<form class="inline" method="post" action="{{ url_for('permission_delete', pid=p.permission_id) }}">{{ csrf_field() }}<button class="sm danger">Delete</button></form></td>{% endif %}</tr>{% else %}<tr><td colspan="5">No permissions</td></tr>{% endfor %}</table></div>
+{% if can_write %}<form method="post" action="{{ url_for('permission_add', sid=s.subscription_id) }}" class="row" style="margin-top:12px">{{ csrf_field() }}
+<div><label>Permission</label><select name="permission_type"><option>READ</option><option>WRITE</option><option>DELETE</option><option>ADMIN</option></select></div>
+<div><label>Allowed</label><select name="allowed"><option value="1">Yes</option><option value="0">No</option></select></div><button>Add permission</button></form>{% endif %}</div>{% endblock %}

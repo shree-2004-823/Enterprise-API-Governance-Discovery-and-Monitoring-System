@@ -1,0 +1,12 @@
+{% extends "base.html" %}{% from "_macros.html" import badge, csrf_field with context %}{% block title %}Versions{% endblock %}
+{% block body %}<h2>API Versions</h2><p class="sub">Listed from <code>api_version_view</code>.</p>
+<div class="card"><div class="tablewrap"><table><thead><tr><th>ID</th><th>API</th><th>Version</th><th>Status</th><th>Released</th><th>Age (yrs)<br><span class="tag">api_age()</span></th><th>Deprecated on</th><th>Endpoints</th>{% if can_write %}<th>Action</th>{% endif %}</tr></thead><tbody>
+{% for v in rows %}<tr><td>{{ v.version_id }}</td><td><a href="{{ url_for('api_detail', api_id=v.api_id) }}">{{ v.api_name }}</a></td><td>{{ v.version_number }}</td><td>{{ badge(v.status) }}</td><td>{{ v.release_date }}</td><td>{{ v.age_years }}</td><td>{{ v.deprecated_date or '-' }}</td><td>{{ v.endpoints }}</td>
+{% if can_write %}<td><form class="inline" method="post" action="{{ url_for('version_status', vid=v.version_id) }}">{{ csrf_field() }}<select name="status">{% for s in statuses %}<option {{ 'selected' if s==v.status }}>{{ s }}</option>{% endfor %}</select> <button class="sm sec">Set</button></form>
+<form class="inline" method="post" action="{{ url_for('version_delete', vid=v.version_id) }}" onsubmit="return confirm('Delete version? Its endpoints are removed; subscriptions block it.')">{{ csrf_field() }}<button class="sm danger">Delete</button></form></td>{% endif %}</tr>{% endfor %}</tbody></table></div></div>
+{% if can_write %}<div class="card"><h3>Add version</h3><form method="post" action="{{ url_for('version_add') }}">{{ csrf_field() }}
+<div class="row"><div><label>API</label><select name="api_id">{% for a in apis %}<option value="{{ a.api_id }}">{{ a.api_name }}</option>{% endfor %}</select></div>
+<div><label>Version</label><input name="version_number" placeholder="v3" required></div><div><label>Release date</label><input type="date" name="release_date" required></div>
+<div><label>Status</label><select name="status">{% for s in statuses %}<option>{{ s }}</option>{% endfor %}</select></div></div>
+<div class="row"><div style="flex:1"><label>Changelog</label><input name="changelog" style="width:100%"></div><button>Add version</button></div></form>
+<p class="hint">The pair (API, version number) is UNIQUE, so adding a duplicate is rejected by MariaDB.</p></div>{% endif %}{% endblock %}

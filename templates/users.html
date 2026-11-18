@@ -1,0 +1,11 @@
+{% extends "base.html" %}{% from "_macros.html" import badge, csrf_field with context %}{% block title %}Users{% endblock %}
+{% block body %}<h2>Users</h2><p class="sub">Admin only. Passwords are stored as salted hashes.</p>
+<div class="card"><div class="tablewrap"><table><thead><tr><th>ID</th><th>Name</th><th>Email</th><th>Role</th><th>Team</th><th>Status</th><th>Owned APIs</th><th>Subscriptions</th><th></th></tr></thead><tbody>
+{% for u in rows %}<tr><td>{{ u.user_id }}</td><td>{{ u.full_name }}</td><td>{{ u.email }}</td><td>{{ u.role_name }}</td><td>{{ u.team_name }}</td><td>{{ badge(u.status) }}</td><td>{{ u.owned_apis }}</td><td>{{ u.subscriptions }}</td>
+<td><form class="inline" method="post" action="{{ url_for('user_delete', uid=u.user_id) }}" onsubmit="return confirm('Delete user?')">{{ csrf_field() }}<button class="sm danger">Delete</button></form></td></tr>{% endfor %}</tbody></table></div>
+<p class="hint">Deleting a user who still owns APIs or has subscriptions is refused by the ON DELETE RESTRICT foreign keys.</p></div>
+<div class="card"><h3>Add user</h3><form method="post" action="{{ url_for('user_add') }}">{{ csrf_field() }}
+<div class="row"><div><label>Full name</label><input name="full_name" required></div><div><label>Email</label><input type="email" name="email" required></div><div><label>Phone</label><input name="phone"></div>
+<div><label>Password</label><input type="password" name="password" required minlength="6"></div>
+<div><label>Role</label><select name="role_id">{% for r in roles %}<option value="{{ r.role_id }}">{{ r.role_name }}</option>{% endfor %}</select></div>
+<div><label>Team</label><select name="team_id">{% for t in teams %}<option value="{{ t.team_id }}">{{ t.team_name }}</option>{% endfor %}</select></div><button>Create</button></div></form></div>{% endblock %}

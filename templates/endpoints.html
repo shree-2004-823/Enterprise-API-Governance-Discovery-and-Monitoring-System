@@ -1,0 +1,10 @@
+{% extends "base.html" %}{% from "_macros.html" import csrf_field with context %}{% block title %}Endpoints{% endblock %}
+{% block body %}<h2>Endpoints</h2><p class="sub">ENDPOINT joined to API_VERSION and API.</p>
+<div class="card"><div class="tablewrap"><table><thead><tr><th>ID</th><th>API</th><th>Version</th><th>Method</th><th>Path</th><th>Description</th>{% if can_write %}<th></th>{% endif %}</tr></thead><tbody>
+{% for e in rows %}<tr><td>{{ e.endpoint_id }}</td><td>{{ e.api_name }}</td><td>{{ e.version_number }}</td><td><b>{{ e.method }}</b></td><td><code>{{ e.endpoint_path }}</code></td><td class="wrap">{{ e.description }}</td>
+{% if can_write %}<td><form class="inline" method="post" action="{{ url_for('endpoint_delete', eid=e.endpoint_id) }}">{{ csrf_field() }}<button class="sm danger">Delete</button></form></td>{% endif %}</tr>{% endfor %}</tbody></table></div></div>
+{% if can_write %}<div class="card"><h3>Add endpoint</h3><form method="post" action="{{ url_for('endpoint_add') }}">{{ csrf_field() }}
+<div class="row"><div><label>API version</label><select name="version_id">{% for v in versions %}<option value="{{ v.version_id }}">{{ v.api_name }} {{ v.version_number }}</option>{% endfor %}</select></div>
+<div><label>Method</label><select name="method">{% for m in methods %}<option>{{ m }}</option>{% endfor %}</select></div>
+<div><label>Path</label><input name="endpoint_path" placeholder="/items/{id}" required></div>
+<div style="flex:1"><label>Description</label><input name="description" style="width:100%"></div><button>Add</button></div></form></div>{% endif %}{% endblock %}
